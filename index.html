@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>聊天App</title>
+
+<style>
+body{margin:0;font-family:Arial;background:#f5f5f5;}
+
+#login{padding:20px;}
+#login input{width:100%;padding:10px;margin:10px 0;}
+#login button{width:100%;padding:10px;background:#07c160;color:#fff;border:none;}
+
+#app{display:none;height:100vh;flex-direction:column;}
+
+.page{flex:1;display:none;padding:10px;}
+.active{display:block;}
+
+#tabbar{
+  height:60px;
+  display:flex;
+  border-top:1px solid #ccc;
+  background:#fff;
+}
+.tab{flex:1;text-align:center;padding-top:8px;}
+.tab.active{color:#07c160;}
+</style>
+</head>
+
+<body>
+
+<div id="login">
+  <h2>登录</h2>
+  <input id="username" placeholder="输入用户名">
+  <button onclick="login()">进入</button>
+</div>
+
+<div id="app">
+
+  <div id="msg" class="page active">
+    <h3 id="status">正在初始化...</h3>
+  </div>
+
+  <div id="contacts" class="page">
+    <h3>联系人</h3>
+  </div>
+
+  <div id="me" class="page">
+    <h3 id="meName"></h3>
+    <button onclick="logout()">退出</button>
+  </div>
+
+  <div id="tabbar">
+    <div class="tab active" onclick="tab('msg',this)">消息</div>
+    <div class="tab" onclick="tab('contacts',this)">联系人</div>
+    <div class="tab" onclick="tab('me',this)">我的</div>
+  </div>
+
+</div>
+
+<script>
+
+let db = null;
+
+/* 登录 */
+function login(){
+  let name = username.value.trim();
+  if(!name) return alert("请输入用户名");
+
+  localStorage.setItem("user", name);
+  enter();
+}
+
+/* 进入 */
+function enter(){
+  let user = localStorage.getItem("user");
+  if(!user) return;
+
+  login.style.display="none";
+  app.style.display="flex";
+  meName.innerText="当前用户："+user;
+
+  initFirebase(); // ⭐ 单独处理
+}
+
+/* ⭐ Firebase 安全加载（带超时） */
+async function initFirebase(){
+
+  let status = document.getElementById("status");
+
+  status.innerText = "⏳ 正在连接服务器...";
+
+  let timeout = setTimeout(()=>{
+    status.innerText = "⚠️ 连接超时（进入离线模式）";
+  }, 4000); // 4秒超时
+
+  try{
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js");
+    const { getDatabase } = await import("https://www.gstatic.com/firebasejs/12.12.1/firebase-database.js");
+
+    const appFirebase = initializeApp({
+      apiKey:"AIzaSyBC_kGww0UzYLiD8Brzn4xKSvrJ8Dc4Rrs",
+      databaseURL:"https://chat-app-e1b25-default-rtdb.firebaseio.com"
+    });
+
+    db = getDatabase(appFirebase);
+
+    clearTimeout(timeout);
+
+    status.innerText = "🔥 Firebase连接成功";
+
+  }catch(e){
+    clearTimeout(timeout);
+    status.innerText = "❌ 连接失败（已进入离线模式）";
+    console.error(e);
+  }
+}
+
+/* 自动登录 */
+enter();
+
+/* 切换 */
+function tab(id,el){
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  el.classList.add("active");
+}
+
+/* 退出 */
+function logout(){
+  localStorage.removeItem("user");
+  location.reload();
+}
+
+</script>
+
+</body>
+</html>
